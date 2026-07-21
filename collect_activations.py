@@ -150,7 +150,7 @@ def collect_activations(
 
     for batch_start in range(0, len(chunk_starts), batch_size):
         batch_chunk_starts = chunk_starts[batch_start : batch_start + batch_size]
-        x = torch.stack(data[s : s + block_size] for s in batch_chunk_starts).to(device)
+        x = torch.stack([data[s : s + block_size] for s in batch_chunk_starts]).to(device)
 
         _ = model(x)  # forward only -> hook fills captured['activations']
         acts = captured["activations"]  # shape: (batch_size, block_size, d_mlp)
