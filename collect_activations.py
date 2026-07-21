@@ -8,7 +8,6 @@ This module does the following step-by-step:
         (https://github.com/ppriyadarshini09/miniGPT#feed-forward-network-ffn)
 3.  Runs eval-mode (no dropouts), no-grad forward passes over the training text
     and collect activations.
-
 """
 
 import os
@@ -173,13 +172,18 @@ def collect_activations(
     return activations, positions
 
 
-def save_activations(ckpt_path, data_path, layer_idx, max_tokens, batch_size, out_path):
+def save_activations(
+    ckpt_path, data_path, layer_idx, max_tokens=None, batch_size=256, out_path=None
+):
     """
-
+    Saves collected activations to given path.
     Args:
         ckpt_path (str): full path to trained model checkpoints (saved as .pt file)
         data_path (str): full path to raw text file to build the token stream to collect activations.
-        out_path (str): ful path to save collected activations.
+        layer_idx (int): tranformer layer to collect activations from
+        max_tokens (int): maximum tokens to run through model to collect activations.
+        batch_size (int): batch size to group collected activations
+        out_path (str): full path to save collected activations.
 
     Raises:
         FileNotFoundError: If ckpt_path or data_path don't exist.
