@@ -137,7 +137,7 @@ def collect_activations(
         activations (list): list of tensor of size (batch_size, block_size, d_mlp)
         positions (list): list of each batch start positions from data tensor
     """
-    block_size = config["block_size"]
+    block_size = config['block_size']
     n_positions = len(data) if max_tokens is None else min(max_tokens, len(data))
     n_chunks = n_positions // block_size
     n_positions = n_chunks * block_size  # trim to a whole number of chunks
@@ -193,7 +193,7 @@ def save_activations(
     print(f"Total token available: {len(data):,}")
 
     activations, positions = collect_activations(
-        model, data, layer_idx, max_tokens, batch_size
+        model, data, config, layer_idx, max_tokens, batch_size
     )
 
     print(
