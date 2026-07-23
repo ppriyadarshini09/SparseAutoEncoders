@@ -40,13 +40,76 @@ class SparseAutoEncoder(nn.Module):
 
         # Weights values are drawn from a standard normal distribution
         # of mean 0 and standard deviation 1, in place.
-        # If not initialized properly, will lead to instability in training,
         # If not initialized properly, will lead to instability (huge initial
-        # losses, exploding gradients) in training - wasting initial training steps.
+        # losses, exploding gradients) in training - wasting initial steps.
         nn.init.normal_(self.W_d)
         self.W_d.data = F.normalize(self.W_d.data, dim=0)
+        # Transpose and copy as separate instance, not shared as these 2
+        # tensors will learn different weights.
+        self.W_e.data = self.W_d.data.t().clone()
 
+    def encode(self, x: torch.Tensor) -> torch.Tensor:
+        """Computes the sparse representation of input activations.
 
+        Args:
+            x (torch.Tensor): Input activations of shape (batch_size, d_in).
 
+        Returns:
+            torch.Tensor: Sparse representation of input activations of shape (batch_size, d_hidden).
+        """
+        return F.relu((x - self.b_d) @ self.W_e.t() + self.b_e)
 
+    def decode(self, f_x: torch.Tensor) -> torch.Tensor:
+        """Reconstructs the input activations from the sparse features
 
+        Args:
+            f_x (torch.Tensor): Sparse representation of input activations of shape (batch_size, d_hidden).
+
+        Returns:
+            torch.Tensor: Reconstructed input activations of shape (batch_size, d_in).
+        """
+        return f_x @ self.W_d.t() + self.b_d
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Full encoder-decoder forward pass
+
+        Args:
+            x (torch.Tensor): Input activations of shape (batch_size, d_in).
+
+        Returns:
+            torch.Tensor: Reconstructed input activations of shape (batch_size, d_in).
+            torch.Tensor: Sparse representation of input activations of shape (batch_size, d_hidden).
+        """
+        f_x = self.encode(x)
+        x_hat = self.decode(f_x)
+        return x_hat, f_x
+
+    def loss(self, x: torch.Tensor, l1_coeff: float) -> float:
+        """Computes reconstruction loss with L1 regularization to enforce sparsity.
+
+        Args:
+            x (torch.Tensor): Input activations of shape (batch_size, d_in).
+            l1_coeff (float): Coefficient for L1 regularization.
+
+        Returns:
+            float: Total loss value.
+        """
+        x_hat, f_x = self.forward(x)
+        recon_loss = F.mse_loss(x_hat, x)
+        l1_loss = f_x.sum(-1).mean()
+        total_loss = recon_loss + (l1_coeff * l1_loss)
+
+        with torch.no_grad():
+            # L0 norm (number of active neurons per example in batch)
+            # dim=-1 - sum across the column in 2d-shape matrix (batch_size, d_hidden)
+            l0_norm = (f_x > 0).float().sum(dim=-1).mean().item()
+            # Dead features: # of feature didn't fire at all for any example in the batch
+            dead_frac = (f_x == 0).float().sum(dim=0).mean().item()
+
+        metrics = {
+            "recon_loss": recon_loss.item(),
+            "l1_loss": l1_loss.item(),
+            "l0": l0_norm,
+            "dead_frac": dead_frac,
+        }
+        return total_loss, metrics

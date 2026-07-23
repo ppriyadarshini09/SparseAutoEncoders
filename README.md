@@ -1,10 +1,10 @@
 # SparseAutoEncoders
 
 ## Personal Thoughts & Questions
-*Below are most ofmy questions & thoughts while trying to understand SAE. These are the things that I would have asked the Professor in the classroom or just silently write down in my notes. Slightly unconventional use of README, please feel free to ignore!*
+*Below are some of my questions & thoughts while trying to understand SAE. These are the things that I would have asked the Professor in the classroom or just silently write down in my notes. Slightly unconventional use of README, please feel free to ignore!*
 
 ### Thought#1 - Beauty lies in Simplicity
-SAE runs revolves and evolves around on fundational Encoder+Decoder mechanics, summed up with 3 equations:
+SAE revolves & evolves around fundational Encoder+Decoder mechanics, summed up with 3 equations:
 
 ```python
 f(x) = ReLU( (x - b_d) @ W_e + b_e ) # Encoder: dense MLP activations -> sparse features
