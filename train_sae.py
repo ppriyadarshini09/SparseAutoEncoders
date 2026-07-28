@@ -54,7 +54,7 @@ def train(activations_path, config=sae_train_config, save_path=None):
             sae.normalize_decoder_weights() # address shrink f & grow w_d loophole
 
             if i % config['eval_every'] == 0:
-                if loss < best_loss.item():
+                if loss.item() < best_loss:
                     best_loss = loss.item()
                     print(f"Epoch: {epoch}, Batch: {i}, Loss: {loss.item()}")
                     save_data = {
