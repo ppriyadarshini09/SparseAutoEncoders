@@ -13,7 +13,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class SparseAutoEncoder(nn.Module):
     """
     A single hidden-layer(which is decomposed/sparsed) sparse autoencoder
@@ -113,3 +112,11 @@ class SparseAutoEncoder(nn.Module):
             "dead_frac": dead_frac,
         }
         return total_loss, metrics
+
+    @torch.no_grad()
+    def normalize_decoder_weights(self):
+        """Renormalize each decoder column back to have unit norm.
+
+        To address "shrink f & grow w_d" loophole.
+        """
+        self.W_d.data = F.normalize(self.W_d.data, dim=0)
