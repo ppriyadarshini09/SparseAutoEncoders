@@ -148,7 +148,7 @@ def summarize_feature_stats(f: torch.Tensor):
     print(f"Total features: {d_hidden}")
     print(f"Dead features: {dead}")
     print(f"Very dense features (fires on >50% of tokens, likely uninterpretable): "
-          f"{very_dense} ({very_dense/d_hidden:.3f})")
+          f"{very_dense} ({very_dense/d_hidden:.1%})")
     print(f"Average L0 (features active per token): {avg_l0:.3f} / {d_hidden}")
 
 def inspect_feature(data_path, saved_activations_path, saved_sae_path):
