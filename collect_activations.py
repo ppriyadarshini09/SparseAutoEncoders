@@ -139,16 +139,22 @@ def collect_activations(
     """
     block_size = config['block_size']
     n_positions = len(data) if max_tokens is None else min(max_tokens, len(data))
+    print(f"Collecting activations for {n_positions} tokens")
     n_chunks = n_positions // block_size
+    print(f"Total {n_chunks} chunks of {block_size} tokens each")
     n_positions = n_chunks * block_size  # trim to a whole number of chunks
+    print(f"Finally collecting activation for {n_positions} positions")
 
+    # Register the activation hook
     handle, captured = register_activation_hook(model, layer_idx)
 
     all_activations = []
     all_positions = []
     chunk_starts = list(range(0, n_positions, block_size))
+    print(f"# of chunks to process: {len(chunk_starts)}")
 
     for batch_start in range(0, len(chunk_starts), batch_size):
+        print(f"Processing chunk {chunk_starts[batch_start]} -> {chunk_starts[batch_start + batch_size-1]}")
         batch_chunk_starts = chunk_starts[batch_start : batch_start + batch_size]
         x = torch.stack([data[s : s + block_size] for s in batch_chunk_starts]).to(device)
 
