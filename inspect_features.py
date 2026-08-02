@@ -46,7 +46,7 @@ def rebuild_tokenizer(data_path: str):
 def compute_feature_matrix(
     sae: SparseAutoEncoder, 
     activations: torch.Tensor, 
-    batch_size: int):
+    batch_size: int = 4096):
     """
     Computes expanded / sparse feature representation (d_hidden) for
     all tokens (in batch_size).
