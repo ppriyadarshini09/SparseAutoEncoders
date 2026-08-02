@@ -139,9 +139,8 @@ def summarize_feature_stats(f: torch.Tensor):
 
     n_total, d_hidden = f.shape
     density_per_feature = (f > 0).float().mean(dim=0) # (d_hidden,)
-
     dead = (density_per_feature == 0).sum().item()
-    very_dense = (density_per_feature > 0.5).sum().item
+    very_dense = (density_per_feature > 0.5).sum().item()
     avg_l0 = (f > 0).float().sum(dim=-1).mean().item() # (N,)
 
     print(f"\n==== Corpus wide feature stats ====")
