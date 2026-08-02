@@ -13,6 +13,7 @@ sae_train_config = {
     'd_in': 512,
     'expand_factor': 4,
     'l1_coeff': 0.05,
+    'l1_warmup_frac': 0.1,
     'batch_size': 1024,
     'lr': 1e-3,
     'epochs': 50,
@@ -43,6 +44,7 @@ def get_l1_coeff(step, total_steps, l1_coeff_final, warm_up_frac):
         return l1_coeff_final
     return l1_coeff_final * step / warmup_steps
 
+
 def train(activations_path, config=sae_train_config, save_path=None):
     if save_path is None:
         raise ValueError("save_path is required")
@@ -58,6 +60,7 @@ def train(activations_path, config=sae_train_config, save_path=None):
     optimizer = torch.optim.Adam(sae.parameters(), lr=config['lr'])
 
     total_steps = epoch * (len(acts) // batch_size)
+    step = 0
 
 
     # Supply data to SAE.
@@ -66,8 +69,8 @@ def train(activations_path, config=sae_train_config, save_path=None):
         if epoch % 10 == 0:
             print(f"Epoch: {epoch}")
         for i, x in enumerate(get_batch(acts, batch_size)):
-            current_l1 = 
-            loss, metrics = sae.loss(x, config['l1_coeff'])
+            current_l1 = get_l1_coeff(step, total_steps, config['l1_coeff'], config['l1_warmup_frac'])
+            loss, metrics = sae.loss(x, current_l1)
             optimizer.zero_grad()   # Reset all gradients.
             loss.backward()         # caculate new gradients.
             optimizer.step()        # update all tensor weights with new gradients.
@@ -83,6 +86,8 @@ def train(activations_path, config=sae_train_config, save_path=None):
                         'metrics': metrics
                     }
                     torch.save(save_data, save_path)
+            step += 1
+            
 
 
         
