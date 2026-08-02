@@ -82,6 +82,9 @@ def train(activations_path, config=sae_train_config, save_path=None):
                     print(f"Epoch: {epoch}, Batch: {i}, Loss: {loss.item()}")
                     save_data = {
                         'sae_state_dict': sae.state_dict(),
+                        'd_in': d_in,
+                        'd_hidden': d_hidden,
+                        'l1_coeff': config['l1_coeff'],
                         'best_loss': best_loss,
                         'metrics': metrics
                     }
