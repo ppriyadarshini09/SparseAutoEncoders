@@ -41,7 +41,6 @@ def rebuild_tokenizer(data_path: str):
     data = torch.tensor(tok.encode(text), dtype=torch.long)
     return tok, data
 
-
 @torch.no_grad()
 def compute_feature_matrix(
     sae: SparseAutoEncoder, 
@@ -59,105 +58,99 @@ def compute_feature_matrix(
     # feature for all token activations.
     return torch.cat(all_f, dim=0)
 
+class FeatureStats:
+    def __init__(self, data_path: str, saved_act_path: str, saved_sae_path: str):
+        self.tok, self.data = rebuild_tokenizer(data_path)
+        self.sae = load_sae(saved_sae_path)
 
-def show_top_activating_examples(
-        feature_idx: int,
-        f: torch.Tensor,
-        positions: torch.Tensor,
-        data: torch.Tensor,
-        tok: CharTokenizer,
-        top_k: int = 10,
-        context_chars: int = 40,
-):
-    """
-    Print the top-K text windows where the feature fires strongest.
-
-    Args:
-        feature_idx (int): Index of the feature to inspect (index of one out of d_hidden)
-        f (torch.Tensor): Sparse feature matrix of shape (N, d_hidden); N = # of tokens
-        positions (torch.Tensor): Positions of the tokens in the data
-        data (torch.Tensor): tokenized data
-        tok (CharTokenizer): Tokenizer for decoding tokens
-        top_k (int): Number of top activating examples to print
-        context_chars (int): Number of characters to show around each activating example
-    """
-    
-    feature_acts = f[:, feature_idx] # Get activations for all tokens for the specified feature
-    top_values, top_indices = torch.topk(feature_acts, k=top_k)
-
-    print(f"\n==== Feature {feature_idx}: {top_k} activating examples ====")
-
-    for rank, (value, idx) in enumerate(zip(top_values.tolist(), top_indices.tolist())):
-        pos = positions[idx].item()
-        start = max(0, pos - context_chars)
-        end = min(len(data), pos + context_chars)
-
-        context_ids = data[start:end].tolist()
-        context_text = tok.decode()
-
-        marker_offset = pos - start
-        highlighted = (context_text[:marker_offset]
-                       + "[[" 
-                       + context_text[marker_offset:marker_offset+1] 
-                       + "]] "
-                       + context_text[marker_offset+1:])
-        highlighted = highlighted.replace("\n", "\\n")
-        print(f"Rank {rank+1:2d}, activation={value:.3f} ...{highlighted}")
-                                        
-
-def show_feature_density(feature_idx: int, f: torch.Tensor):
-    """
-    Show the density/distribution stats for a single feature, essentially
-    how often & strong it fires.
-
-    Args:
-        feature_idx (int): Index of the feature to inspect
-        f (torch.Tensor): Sparse feature matrix of shape (N, d_hidden)
-    """
-    feature_acts = f[:, feature_idx]
-    n_total = len(feature_acts)
-    n_active = (feature_acts > 0).sum().item()
-    density = n_active / n_total
-
-    print(f"\n==== Feature {feature_idx} : density stats ====")
-    print(f"Fires on {n_active}/{n_total} tokens ({density:.4f} of all positions)")
-    if n_active > 0:
-        active_vals = feature_acts[feature_acts > 0]
-        print(f"When active -- mean: {active_vals.mean():.3f} "
-              f"max: {active_vals.max():.3f} min: {active_vals.min():.3f}")
-    else:
-        print(f"DEAD FEATURE -- never activates on this dataset.")
+        saved_acts = torch.load(saved_act_path, map_location=device, weights_only=False)
+        self.activations = saved_acts['activations']
+        self.positions = saved_acts['positions']
+        self.f = compute_feature_matrix(self.sae, self.activations)
 
 
-def summarize_feature_stats(f: torch.Tensor):
-    """Prints corpus wide summary: how many features are dead, how many 
-    are extremely dense (likely uninterpretable), and the overall L0.
+    def show_top_activating_examples(
+            self,
+            feature_idx: int,
+            top_k: int = 10,
+            context_chars: int = 40,
+    ):
+        """
+        Print the top-K text windows where the feature fires strongest.
 
-    Args:
-        f (torch.Tensor): Sparse feature matrix of shape (N, d_hidden)
-    """
+        Args:
+            feature_idx (int): Index of the feature to inspect (index of one out of d_hidden)
+            f (torch.Tensor): Sparse feature matrix of shape (N, d_hidden); N = # of tokens
+            positions (torch.Tensor): Positions of the tokens in the data
+            data (torch.Tensor): tokenized data
+            tok (CharTokenizer): Tokenizer for decoding tokens
+            top_k (int): Number of top activating examples to print
+            context_chars (int): Number of characters to show around each activating example
+        """
+        
+        feature_acts = f[:, feature_idx] # Get activations for all tokens for the specified feature
+        top_values, top_indices = torch.topk(feature_acts, k=top_k)
 
-    n_total, d_hidden = f.shape
-    density_per_feature = (f > 0).float().mean(dim=0) # (d_hidden,)
-    dead = (density_per_feature == 0).sum().item()
-    very_dense = (density_per_feature > 0.5).sum().item()
-    avg_l0 = (f > 0).float().sum(dim=-1).mean().item() # (N,)
+        print(f"\n==== Feature {feature_idx}: {top_k} activating examples ====")
 
-    print(f"\n==== Corpus wide feature stats ====")
-    print(f"Total features: {d_hidden}")
-    print(f"Dead features: {dead}")
-    print(f"Very dense features (fires on >50% of tokens, likely uninterpretable): "
-          f"{very_dense} ({very_dense/d_hidden:.1%})")
-    print(f"Average L0 (features active per token): {avg_l0:.3f} / {d_hidden}")
+        for rank, (value, idx) in enumerate(zip(top_values.tolist(), top_indices.tolist())):
+            pos = self.positions[idx].item()
+            start = max(0, pos - context_chars)
+            end = min(len(self.data), pos + context_chars)
 
-def inspect_feature(data_path, saved_activations_path, saved_sae_path):
-    tok, data = rebuild_tokenizer(data_path)
-    sae = load_sae(saved_sae_path)
+            context_ids = self.data[start:end].tolist()
+            context_text = self.tok.decode()
 
-    saved_acts = torch.load(saved_activations_path, map_location=device, weights_only=False)
-    activations = saved_acts['activations']
-    positions = saved_acts['positions']
+            marker_offset = pos - start
+            highlighted = (context_text[:marker_offset]
+                        + "[[" 
+                        + context_text[marker_offset:marker_offset+1] 
+                        + "]] "
+                        + context_text[marker_offset+1:])
+            highlighted = highlighted.replace("\n", "\\n")
+            print(f"Rank {rank+1:2d}, activation={value:.3f} ...{highlighted}")
+                                            
 
-    f = compute_feature_matrix(sae, activations)
-    summarize_feature_stats(f)
+    def show_feature_density(self, feature_idx: int):
+        """
+        Show the density/distribution stats for a single feature, essentially
+        how often & strong it fires.
 
+        Args:
+            feature_idx (int): Index of the feature to inspect
+            f (torch.Tensor): Sparse feature matrix of shape (N, d_hidden)
+        """
+        feature_acts = self.f[:, feature_idx]
+        n_total = len(feature_acts)
+        n_active = (feature_acts > 0).sum().item()
+        density = n_active / n_total
+
+        print(f"\n==== Feature {feature_idx} : density stats ====")
+        print(f"Fires on {n_active}/{n_total} tokens ({density:.4f} of all positions)")
+        if n_active > 0:
+            active_vals = feature_acts[feature_acts > 0]
+            print(f"When active -- mean: {active_vals.mean():.3f} "
+                f"max: {active_vals.max():.3f} min: {active_vals.min():.3f}")
+        else:
+            print(f"DEAD FEATURE -- never activates on this dataset.")
+
+    def summarize_feature_stats(self):
+        """Prints corpus wide summary: how many features are dead, how many 
+        are extremely dense (likely uninterpretable), and the overall L0.
+
+        Args:
+            f (torch.Tensor): Sparse feature matrix of shape (N, d_hidden)
+        """
+
+        n_total, d_hidden = self.f.shape
+        density_per_feature = (self.f > 0).float().mean(dim=0) # (d_hidden,)
+        dead = (density_per_feature == 0).sum().item()
+        very_dense = (density_per_feature > 0.5).sum().item()
+        avg_l0 = (self.f > 0).float().sum(dim=-1).mean().item() # (N,)
+
+        print(f"\n==== Corpus wide feature stats ====")
+        print(f"Total features: {d_hidden}")
+        print(f"Dead features: {dead}")
+        print(f"Very dense features (fires on >50% of tokens, likely uninterpretable): "
+            f"{very_dense} ({very_dense/d_hidden:.1%})")
+        print(f"Average L0 (features active per token): {avg_l0:.3f} / {d_hidden}")
