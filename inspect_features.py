@@ -88,7 +88,7 @@ class FeatureStats:
             context_chars (int): Number of characters to show around each activating example
         """
         
-        feature_acts = f[:, feature_idx] # Get activations for all tokens for the specified feature
+        feature_acts = self.f[:, feature_idx] # Get activations for all tokens for the specified feature
         top_values, top_indices = torch.topk(feature_acts, k=top_k)
 
         print(f"\n==== Feature {feature_idx}: {top_k} activating examples ====")
