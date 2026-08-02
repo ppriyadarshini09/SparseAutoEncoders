@@ -154,7 +154,7 @@ def collect_activations(
     print(f"# of chunks to process: {len(chunk_starts)}")
 
     for batch_start in range(0, len(chunk_starts), batch_size):
-        print(f"Processing chunk {chunk_starts[batch_start]} -> {chunk_starts[batch_start + batch_size-1]}")
+        print(f"Processing chunk {batch_start}")
         batch_chunk_starts = chunk_starts[batch_start : batch_start + batch_size]
         x = torch.stack([data[s : s + block_size] for s in batch_chunk_starts]).to(device)
 
