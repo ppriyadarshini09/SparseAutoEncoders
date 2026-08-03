@@ -99,7 +99,7 @@ class FeatureStats:
             end = min(len(self.data), pos + context_chars)
 
             context_ids = self.data[start:end].tolist()
-            context_text = self.tok.decode()
+            context_text = self.tok.decode(context_ids)
 
             marker_offset = pos - start
             highlighted = (context_text[:marker_offset]
